@@ -32,16 +32,19 @@ import Matter from "https://cdn.skypack.dev/matter-js";
 var classGame = {
   init: function () {
     this.initMatterJsObjects();
+    this.initGameSettings();
     // this.createInitLevel();
     this.createMainObjects();
-    this.initGameSettings();
+
     this.createWorldInit();
     this.createPlayer();
     this.setScreenSettings();
     // this.runGame();
     this.setKeyHandlers();
     // this.setCameraSettings();
-
+  
+    this.drawStars();
+    this.ctx.save();
   },
 
   initMatterJsObjects: function () {
@@ -58,110 +61,12 @@ var classGame = {
     this.Mouse = Matter.Mouse;
     this.Composite = Matter.Composite;
     this.MouseConstraint = Matter.MouseConstraint;
-
   },
-
-  createMainObjects: function () {
-    this.engine = this.Engine.create();
-
-    this.render = this.Render.create({
-      canvas: document.getElementById("canvas"),
-      engine: this.engine,
-      options: {
-        width: window.innerWidth,
-        height: window.innerHeight,
-        wireframes: true,
-        background: "#638dbd",
-        wireframeBackground: "#394763",
-        hasBounds: true
-        // showCollisions: true,
-        // showVelocity: true,
-      },
-    });
-
-    this.Render.run(this.render); //this.render ?
-    this.runner = this.Runner.create({
-      delta: 1000/50,
-      isFixed: true
-    });
-    this.Runner.run(this.runner, this.engine);
-
-    //own Game loop, use Engine.update(engine, delta)
-    //https://brm.io/matter-js/docs/classes/Runner.html
-  },
-
-
-  createPlayer() {
-    // var player = this.Bodies.rectangle(this.world_bound_X/2,this.world_bound_Y-600,50,50, { airFriction: 0.001 });
-    // this.World.add(this.engine.world, [player]);
-
-  },
-
-  setScreenSettings: function () {
-    var canvas = document.createElement('canvas');
-    this.ctx = canvas.getContext('2d');
-
-    window.onresize = function () {
-      this.render.canvas.width = window.innerWidth;
-      this.render.canvas.height = window.innerHeight;
-    }.bind(this);
-
-
-    this.Events.on(this.runner, 'beforeUpdate', function() {
-        
-      // apply zoom
-        // var canvas = document.getElementById('canvas');
-        // var ctx = canvas.getContext("2d");
-        // ctx.translate(window.innerWidth/2, window.innerHeight/2);
-        // ctx.scale(this.zoom, this.zoom);
-        // ctx.translate(-window.innerWidth/2, -window.innerHeight/2);  
-
-      // center view at player 
-      this.Bounds.shift(this.render.bounds,
-      {
-          x: this.boxA.position.x - window.innerWidth / 2,
-          y: this.boxA.position.y - window.innerHeight / 2
-      });
-
-  }.bind(this));
-
-
-
-
-
-
-
-    //https://stackoverflow.com/questions/34913835/how-can-i-move-camera-in-matter-js
-// hero = bubbleBall
-
-// // Follow Hero at X-axis
-
-// engine.render.bounds.max.x = centerX + hero.bounds.min.x + initialEngineBoundsMaxX
-
-// // Follow Hero at Y-axis
-// engine.render.bounds.min.y = centerY + hero.bounds.min.y
-// engine.render.bounds.max.y = centerY + hero.bounds.min.y + initialEngineBoundsMaxY
-
-// // Update Mouse
-// Mouse.setOffset(mouseConstraint.mouse, engine.render.bounds.min);
-
-// Render.lookAt(render, player, {
-//   x: 1080,
-//   y: 1920
-// });
-
-   //Working Example Translation
-    // let translate = {x : -100, y : -100}
-    // this.Bounds.translate(this.render.bounds, translate)
-
-
-
-  },
-
 
   initGameSettings: function () {
     //Body(Player) Data
     this.speed = 0.002;
+    this.delta = 1000/50;
 
     this.world_bound_X = 3000;
     this.world_bound_Y = 3000;
@@ -178,9 +83,78 @@ var classGame = {
     // this.engine.world.bounds.max.y = this.world_bound_Y;
   },
 
-  runGame: function () {
+  createMainObjects: function () {
+    this.engine = this.Engine.create();
 
+    this.render = this.Render.create({
+      canvas: document.getElementById("canvas"),
+      engine: this.engine,
+      options: {
+        width: window.innerWidth,
+        height: window.innerHeight,
+        wireframes: true,
+        // background: "#638dbd",
+        // wireframeBackground: "#394763",
+        hasBounds: true,
+        // showCollisions: true,
+        // showVelocity: true,
+      },
+    });
+
+    this.Render.run(this.render); //this.render ?
+    this.runner = this.Runner.create({
+      delta: this.delta,
+      isFixed: true,
+    });
+    this.Runner.run(this.runner, this.engine);
+    //own Game loop, use Engine.update(engine, delta)
+    //https://brm.io/matter-js/docs/classes/Runner.html
+
+    this.engine.gravity.x = 0;
+    this.engine.gravity.y = 0.0;
+    // this.engine.gravity.isPoint = true;
+    // this.engine.gravity.scale = 10;
   },
+
+  createPlayer() {
+    // var player = this.Bodies.rectangle(this.world_bound_X/2,this.world_bound_Y-600,50,50, { airFriction: 0.001 });
+    // this.World.add(this.engine.world, [player]);
+  },
+
+  setScreenSettings: function () {
+    //https://stackoverflow.com/questions/34913835/how-can-i-move-camera-in-matter-js
+    //Examples for Camera Movement and Zoom
+
+    var canvas = document.createElement("canvas");
+    this.ctx = canvas.getContext("2d");
+
+    window.onresize = function () {
+      this.render.canvas.width = window.innerWidth;
+      this.render.canvas.height = window.innerHeight;
+      starsMoveRandom();
+    }.bind(this);
+
+    this.Events.on(
+      this.runner,
+      "beforeUpdate",
+      function () {
+        // apply zoom
+        // var canvas = document.getElementById('canvas');
+        // var ctx = canvas.getContext("2d");
+        // ctx.translate(window.innerWidth/2, window.innerHeight/2);
+        // ctx.scale(this.zoom, this.zoom);
+        // ctx.translate(-window.innerWidth/2, -window.innerHeight/2);
+
+        // center view at player
+        this.Bounds.shift(this.render.bounds, {
+          x: this.boxA.position.x - window.innerWidth / 2,
+          y: this.boxA.position.y - window.innerHeight / 2,
+        });
+      }.bind(this)
+    );
+  },
+
+  runGame: function () {},
 
   createWorldInit: function () {
     //create World
@@ -190,6 +164,9 @@ var classGame = {
     this.boxA = this.Bodies.rectangle(400, 200, 80, 80, {
       inertia: Infinity,
       friction: 0.1,
+      frictionStatic: 0,
+      frictionAir: 0,
+      restitution: 0.2, //bounce 1 = 100% elastic
     });
     bodies.push(this.boxA);
 
@@ -208,11 +185,23 @@ var classGame = {
     });
     bodies.push(this.leftWall);
 
+    this.homePlanet = this.Bodies.circle(0, 2000, 1000, {
+      isStatic: true,
+    });
+    bodies.push(this.homePlanet);
+
+    //Add Objects to World
     // this.Composite.add(
     //   this.engine.world, bodies
     // );
 
-    this.World.add(this.engine.world, bodies);
+    this.World.add(this.engine.world, bodies, {
+      // friction: 0,
+      // frictionStatic: 0,
+      // frictionAir: 0,
+      // restitution: 0,
+      // isStatic: true,
+    });
   },
 
   setKeyHandlers: function () {
@@ -273,9 +262,79 @@ var classGame = {
       });
     });
   },
+
+  drawStars: function () {
+    var star = [];
+    this.star = star;
+    this.totalStars = 100;
+    for (var i = 0; i < this.totalStars; i++) {
+      star.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight
+      });
+    }
+
+    // this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // this.ctx.fillStyle = "green";
+    // this.ctx.fillRect(100, 100, 1000, 1000);
+
+
+
+    this.ctx.fillStyle = "#ffffff"; //'darkgrey'; //'rgba(255, 255, 255, 0.5)'
+    var parallax = 1;
+    var Vx = this.boxA.velocity.x ;
+    var Vy = this.boxA.velocity.y;
+    var width = window.innerWidth;
+    var height = window.innerHeight;
+    for (var i = 0; i < this.totalStars; i++) {
+      star[i].x -= Vx;
+      star[i].y -= Vy;
+      this.ctx.fillRect(star[i].x, star[i].y, 1, 1);
+      if (star[i].x < 0) {
+        star[i].x = width;
+        star[i].y = Math.random() * height;
+      }
+      if (star[i].x > width) {
+        star[i].x = 0;
+        star[i].y = Math.random() * height;
+      }
+      if (star[i].y < 0) {
+        star[i].y = height;
+        star[i].x = Math.random() * width;
+      }
+      if (star[i].y > height) {
+        star[i].y = 0;
+        star[i].x = Math.random() * width;
+      }
+    }
+  },
+
+  starsMoveRandom: function() {
+    for (var i = 0; i < this.totalStars; i++) {
+      this.star[i].x = Math.random() * window.innerWidth;
+      this.star[i].y = Math.random() * window.innerHeight;
+    }
+  },  
+
+  setForceHandler: function () {
+    // Forces
+    this.Events.on(
+      this.runner,
+      "beforeTick",
+      function () {
+
+        //Rotation 
+        this.Body.rotate( this.homePlanet, Math.PI * this.delta * 1/100000 );
+
+
+
+      }.bind(this)
+    );
+  },
 };
 
 classGame.init();
+classGame.setForceHandler();
 
 // (function cycle() { //render loop
 //   ctx.save(); //move camera
