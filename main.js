@@ -2,6 +2,8 @@ import "./style.css";
 import javascriptLogo from "./javascript.svg";
 import { setupCounter } from "./counter.js";
 import Matter from "https://cdn.skypack.dev/matter-js";
+
+// import { transformWithEsbuild } from "vite";
 // import "./src/controls.js";
 // import { init } from "./src/basicExample.js";
 // export {default as init} from './src/basicExample.js'
@@ -67,13 +69,23 @@ var oGame = {
   },
 
   initGameSettings: function () {
-    //Body(Player) Data
-    this.speed = 0.0001;
+    //General
     this.delta = 1000 / 50;
+
+    //Rocket
+    this.rocketSpeed = 1 * 1e-5;
     this.fuel = 800;
     this.fuelInit = 1000;
     this.rocket;
+    this.rotationSpeed = 0.008;
+    this.boostMultiplier = 4;
+    this.fuelMultiplier = 1;
+    this.fuelBoostMultiplier = 8;
 
+    //Gravity and Interaction
+    this.gravityConstant = 0.0005;
+
+    //Camera and Bounding
     this.world_bound_X = 3000;
     this.world_bound_Y = 3000;
     this.zoom = 1;
@@ -92,10 +104,16 @@ var oGame = {
     this.canvas = document.getElementById("canvas");
     this.ctx = canvas.getContext("2d");
 
-    var base_image = new Image();
-    base_image.src = "./assets/controlsTemplate.png";
-    base_image.onload = function () {
-      this.base_image = base_image;
+    var imageControls = new Image();
+    imageControls.src = "./assets/controlsTemplate.png";
+    imageControls.onload = function () {
+      this.imageControls = imageControls;
+    }.bind(this);
+
+    var imageRocket = new Image();
+    imageRocket.src = "./assets/rocketDefault.png";
+    imageRocket.onload = function () {
+      this.rocketDefault = imageRocket;
     }.bind(this);
   },
 
@@ -191,6 +209,8 @@ var oGame = {
     //create World
 
     this.createHomePlanet();
+    this.createColdMoon();
+    this.createHotMoon();
 
     let bodies = [];
 
@@ -199,11 +219,18 @@ var oGame = {
       friction: 0.1,
       frictionStatic: 0,
       frictionAir: 0,
+      mass: 1,
+      // isStatic: false,
       restitution: 0.2, //bounce 1 = 100% elastic
       render: {
         fillStyle: "#f55a3c",
         // fillStyle: 'transparent',
         lineWidth: 3,
+        sprite: {
+          texture: "./assets/rocketDefault.png",
+          xScale: 0.1,
+          yScale: 0.1,
+        },
       },
     });
     this.rocket.render.fillStyle = "grey";
@@ -236,9 +263,9 @@ var oGame = {
 
   createHomePlanet: function () {
     let bodies = [];
-
     this.homePlanet = this.Bodies.circle(0, 1200, 1105, {
       isStatic: true,
+      mass: 100,
       render: {
         // fillStyle: "#97641C",
         // strokeStyle: "green",
@@ -248,20 +275,50 @@ var oGame = {
         },
       },
     });
+
+    // this.Body.setDensity( this.homePlanet, density);
+    // this.Body.setMass( this.homePlanet, 100)
+
     bodies.push(this.homePlanet);
-
     this.World.add(this.engine.world, bodies, {});
+  },
 
-    //Add Image
-    //Image
-    // var img = new Image();
-    // img.onload = function() {
-    //     handleLoadedTexture(img);
-    // };
-    // img.src = "image.png";
-    // function handleLoadedTexture(img) {
-    //call loop etc that uses image
-    // };
+  createColdMoon: function () {
+    let bodies = [];
+    this.coldMoon = this.Bodies.circle(1200, -1000, 490, {
+      isStatic: true,
+      mass: 30, //test
+      render: {
+        // fillStyle: "#97641C",
+        // strokeStyle: "green",
+        // lineWidth: 20,
+        sprite: {
+          texture: "./assets/coldMoon.png",
+        },
+      },
+    });
+    bodies.push(this.coldMoon);
+    this.World.add(this.engine.world, bodies, {});
+  },
+
+  createHotMoon: function () {
+    let bodies = [];
+    this.hotMoon = this.Bodies.circle(-1000, -1000, 550, {
+      isStatic: true,
+      mass: 70,
+      render: {
+        // fillStyle: "#97641C",
+        // strokeStyle: "green",
+        // lineWidth: 20,
+        sprite: {
+          texture: "./assets/hotMoon.png",
+          xScale: 0.5,
+          yScale: 0.5,
+        },
+      },
+    });
+    bodies.push(this.hotMoon);
+    this.World.add(this.engine.world, bodies, {});
   },
 
   setKeyHandlers: function () {
@@ -270,67 +327,25 @@ var oGame = {
 
     const keyHandlers = {
       KeyW: () => {
-        if (this.modifier) {
-          this.Body.applyForce(
-            this.rocket,
-            {
-              x: this.rocket.position.x,
-              y: this.rocket.position.y,
-            },
-            { x: 0, y: -3 * this.speed }
-          );
-          this.fuel = this.fuel - 10 / this.delta;
-        } else {
-          this.Body.applyForce(
-            this.rocket,
-            {
-              x: this.rocket.position.x,
-              y: this.rocket.position.y,
-            },
-            { x: 0, y: -1 * this.speed }
-          );
-          this.fuel = this.fuel - 3 / this.delta;
-        }
+        this.applyRocketForce(0, Math.PI, this.modifier);
       },
       KeyS: () => {
-        this.Body.applyForce(
-          this.rocket,
-          {
-            x: this.rocket.position.x,
-            y: this.rocket.position.y,
-          },
-          { x: 0, y: 1 * this.speed }
-        );
-        this.fuel = this.fuel - 3 / this.delta;
+        this.applyRocketForce(Math.PI, 0, false);
       },
       KeyD: () => {
-        this.Body.applyForce(
-          this.rocket,
-          {
-            x: this.rocket.position.x,
-            y: this.rocket.position.y,
-          },
-          { x: 1 * this.speed, y: 0 }
-        );
-        this.fuel = this.fuel - 3 / this.delta;
+        this.applyRocketForce(Math.PI / 2, (3 / 2) * Math.PI, false);
       },
       KeyA: () => {
-        this.Body.applyForce(
-          this.rocket,
-          {
-            x: this.rocket.position.x,
-            y: this.rocket.position.y,
-          },
-          { x: -1 * this.speed, y: 0 }
-        );
+        this.applyRocketForce((3 / 2) * Math.PI, Math.PI / 2, false);
       },
       KeyQ: () => {
-        this.Body.rotate(this.rocket, Math.PI * this.speed * 40);
-        this.fuel = this.fuel - 3 / this.delta;
+        this.Body.rotate(
+          this.rocket,
+          -Math.PI * this.rotationSpeed );
       },
       KeyE: () => {
-        this.Body.rotate(this.rocket, -Math.PI * this.speed * 40);
-        this.fuel = this.fuel - 3 / this.delta;
+        this.Body.rotate(
+          this.rocket,  Math.PI * this.rotationSpeed );
       },
       KeySpace: () => {},
       KeyF: () => {},
@@ -357,34 +372,36 @@ var oGame = {
     }).bind(this);
   },
 
-  applyRocketForce: function (iX, iY, bBoostModifier) {
-    if (bBoostModifier) {
-      var fuelMultiplier = 3;
-      var fuelMultiplierBoost = 10;
+  applyRocketForce: function (iOffsetX, iOffsetY, bBoostModifier) {
+    // if (this.fuel > 0) {
+    let xForce = this.rocketSpeed * Math.sin(this.rocket.angle + iOffsetX);
+    let yForce = this.rocketSpeed * Math.cos(this.rocket.angle + iOffsetY);
 
-      this.Body.applyForce(
-        this.rocket,
-        {
-          x: this.rocket.position.x,
-          y: this.rocket.position.y,
-        },
-        {
-          x: this.speed * Math.cos(this.rocket.angle + Math.PI * 0.5),
-          y: this.speed * Math.cos(this.rocket.angle + Math.PI * 0.5),
-        }
-      );
-      this.fuel = this.fuel - fuelMultiplierBoost / this.delta;
+    if (bBoostModifier) {
+      xForce = xForce * this.boostMultiplier;
+      yForce = yForce * this.boostMultiplier;
+      this.fuel =
+        this.fuel -
+        (this.fuelMultiplier * this.fuelBoostMultiplier) / this.delta;
     } else {
-      this.Body.applyForce(
-        this.rocket,
-        {
-          x: this.rocket.position.x,
-          y: this.rocket.position.y,
-        },
-        { x: 0, y: -1 * this.speed }
-      );
-      this.fuel = this.fuel - fuelMultiplier / this.delta;
+      xForce = xForce;
+      yForce = yForce;
+      this.fuel = this.fuel - this.fuelMultiplier / this.delta;
     }
+
+    this.Body.applyForce(
+      this.rocket,
+      {
+        x: this.rocket.position.x,
+        y: this.rocket.position.y,
+      },
+      {
+        x: xForce,
+        y: yForce,
+      }
+    );
+
+    // }
   },
 
   drawStars: function () {
@@ -440,9 +457,51 @@ var oGame = {
       "beforeTick",
       function () {
         //Rotation
-        this.Body.rotate(this.homePlanet, (Math.PI * this.delta * 1) / 100000);
+        // this.Body.rotate(this.homePlanet, (Math.PI * this.delta * 1) / 100000);
+
+        //FOrce
+        this.applyGravityPlanets(this.homePlanet);
+        this.applyGravityPlanets(this.hotMoon);
+        this.applyGravityPlanets(this.coldMoon);
       }.bind(this)
     );
+  },
+
+  applyGravityPlanets: function (oPlanet) {
+    let deltaX = oPlanet.position.x - this.rocket.position.x;
+    let deltaY = oPlanet.position.y - this.rocket.position.y;
+
+    let distance = Math.sqrt(
+      Math.pow(deltaX, 2) + Math.pow(deltaY, 2)
+    );
+
+    // if ( distance < 3000 ) {
+    // let force =
+    //   (this.gravityConstant *100* this.rocket.mass * oPlanet.mass) /
+    //   (distance * distance); 
+
+    //modified fake Force
+    let force =
+      (this.gravityConstant * this.rocket.mass * oPlanet.mass) /
+      (distance); 
+
+    let xForce = force * Math.cos(-deltaX / distance + Math.PI *1/2 );
+    let yForce = force * Math.sin(deltaY / distance + Math.PI * 0 );
+
+    this.Body.applyForce(
+      this.rocket,
+      {
+        x: this.rocket.position.x,
+        y: this.rocket.position.y,
+      },
+      {
+        x: xForce ,
+        y: yForce,
+      }
+    );
+
+
+    // }
   },
 
   setGameWorldColors: function () {
@@ -467,21 +526,24 @@ var oGame = {
     // let hudWidth = 400;
     // let hudHeight = 40;
     // // this.ctx.clearRect();
-    this.ctx.fillStyle = "#5E42A9";
-    this.ctx.fillRect(
-      window.innerWidth / 2 - hudWidth / 2,
-      window.innerHeight - hudHeight,
-      (hudWidth * this.fuel) / this.fuelInit,
-      -hudHeight
-    );
+
+    if (this.fuel > 0) {
+      this.ctx.fillStyle = "#5E42A9";
+      this.ctx.fillRect(
+        window.innerWidth / 2 - hudWidth / 2,
+        window.innerHeight - hudHeight,
+        (hudWidth * this.fuel) / this.fuelInit,
+        -hudHeight
+      );
+    }
   },
 
   setHudControls: function () {
     // let hudWidth = 200;
     // let hudHeight = 200;
-    if (this.base_image) {
+    if (this.imageControls) {
       this.ctx.drawImage(
-        this.base_image,
+        this.imageControls,
         window.innerWidth,
         window.innerHeight,
         -300,
