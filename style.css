@@ -1,4 +1,4 @@
-:root {
+/* :root {
   font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
   font-size: 16px;
   line-height: 24px;
@@ -94,7 +94,7 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
-}
+} */
 
 .default-background {
   position: absolute;
@@ -103,3 +103,17 @@ button:focus-visible {
   background: linear-gradient(313deg, #638dbd 33%, #394763 111%);
   background-repeat: repeat;
 }  
+
+.star-background {
+  /* position: absolute; */
+  width: 100%;
+  height: 100%;
+  /* background: linear-gradient(313deg, #0b1a2b 33%, #000000 111%); */
+  background-image: url("./assets/backgroundStars.jpg");
+  background-repeat: repeat;
+}  
+
+/* canvas {
+  position: relative;
+  display: block;
+} */

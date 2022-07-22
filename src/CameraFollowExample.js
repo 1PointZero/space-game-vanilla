@@ -21,7 +21,7 @@
     this.Mouse  = Matter.Mouse;
     this.MouseConstraint = Matter.MouseConstraint;
 
-    // dynamic based on window size
+    // dynamic based on eindow size
     //this.client_width   = 800; 
     //this.client_height  = 600;
     
