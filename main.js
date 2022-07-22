@@ -29,22 +29,25 @@ import Matter from "https://cdn.skypack.dev/matter-js";
 
 //https://stackoverflow.com/questions/68416755/keyboard-movement-is-jerky-in-matter-js/68425122#68425122
 
-var classGame = {
+var oGame = {
   init: function () {
     this.initMatterJsObjects();
     this.initGameSettings();
+    this.initCanvas();
     // this.createInitLevel();
     this.createMainObjects();
-
     this.createWorldInit();
     this.createPlayer();
     this.setScreenSettings();
     // this.runGame();
     this.setKeyHandlers();
     // this.setCameraSettings();
-  
-    this.drawStars();
-    this.ctx.save();
+    // this.drawStars();
+
+    this.setHudMain();
+    this.setHudControls();
+
+    // this.ctx.save();
   },
 
   initMatterJsObjects: function () {
@@ -65,8 +68,11 @@ var classGame = {
 
   initGameSettings: function () {
     //Body(Player) Data
-    this.speed = 0.002;
-    this.delta = 1000/50;
+    this.speed = 0.0001;
+    this.delta = 1000 / 50;
+    this.fuel = 800;
+    this.fuelInit = 1000;
+    this.rocket;
 
     this.world_bound_X = 3000;
     this.world_bound_Y = 3000;
@@ -74,7 +80,6 @@ var classGame = {
     this.bounds_scale_target = {};
 
     // this.world.gravity = 1;
-
     // make the world bounds a little bigger than the render bounds
     // this.world_padding = 300;
     // this.engine.world.bounds.min.x = 0 - this.world_padding;
@@ -83,7 +88,18 @@ var classGame = {
     // this.engine.world.bounds.max.y = this.world_bound_Y;
   },
 
-  createMainObjects: function () {
+  initCanvas: function () {
+    this.canvas = document.getElementById("canvas");
+    this.ctx = canvas.getContext("2d");
+
+    var base_image = new Image();
+    base_image.src = "./assets/controlsTemplate.png";
+    base_image.onload = function () {
+      this.base_image = base_image;
+    }.bind(this);
+  },
+
+  _createMainObjects: function () {
     this.engine = this.Engine.create();
 
     this.render = this.Render.create({
@@ -92,12 +108,12 @@ var classGame = {
       options: {
         width: window.innerWidth,
         height: window.innerHeight,
-        wireframes: true,
-        // background: "#638dbd",
+        wireframes: false,
+        // background: "#071847",
         // wireframeBackground: "#394763",
         hasBounds: true,
-        // showCollisions: true,
-        // showVelocity: true,
+        showCollisions: true,
+        showVelocity: true,
       },
     });
 
@@ -109,11 +125,25 @@ var classGame = {
     this.Runner.run(this.runner, this.engine);
     //own Game loop, use Engine.update(engine, delta)
     //https://brm.io/matter-js/docs/classes/Runner.html
-
     this.engine.gravity.x = 0;
     this.engine.gravity.y = 0.0;
     // this.engine.gravity.isPoint = true;
     // this.engine.gravity.scale = 10;
+    this.Events.on(
+      this.render,
+      "afterRender",
+      function () {
+        // this.drawStars();
+        this.setHudMain();
+        this.setHudControls();
+      }.bind(this)
+    );
+  },
+  get createMainObjects() {
+    return this._createMainObjects;
+  },
+  set createMainObjects(value) {
+    this._createMainObjects = value;
   },
 
   createPlayer() {
@@ -125,13 +155,14 @@ var classGame = {
     //https://stackoverflow.com/questions/34913835/how-can-i-move-camera-in-matter-js
     //Examples for Camera Movement and Zoom
 
-    var canvas = document.createElement("canvas");
-    this.ctx = canvas.getContext("2d");
+    // var canvas = document.getElementById("canvas");
+    // this.ctx = canvas.getContext("2d");
 
     window.onresize = function () {
       this.render.canvas.width = window.innerWidth;
       this.render.canvas.height = window.innerHeight;
-      starsMoveRandom();
+      this.setGameWorldColors();
+      // this.starsMoveRandom();
     }.bind(this);
 
     this.Events.on(
@@ -147,8 +178,8 @@ var classGame = {
 
         // center view at player
         this.Bounds.shift(this.render.bounds, {
-          x: this.boxA.position.x - window.innerWidth / 2,
-          y: this.boxA.position.y - window.innerHeight / 2,
+          x: this.rocket.position.x - window.innerWidth / 2,
+          y: this.rocket.position.y - window.innerHeight / 2,
         });
       }.bind(this)
     );
@@ -159,41 +190,40 @@ var classGame = {
   createWorldInit: function () {
     //create World
 
-    var bodies = [];
+    this.createHomePlanet();
 
-    this.boxA = this.Bodies.rectangle(400, 200, 80, 80, {
+    let bodies = [];
+
+    this.rocket = this.Bodies.rectangle(0, 0, 50, 120, {
       inertia: Infinity,
       friction: 0.1,
       frictionStatic: 0,
       frictionAir: 0,
       restitution: 0.2, //bounce 1 = 100% elastic
+      render: {
+        fillStyle: "#f55a3c",
+        // fillStyle: 'transparent',
+        lineWidth: 3,
+      },
     });
-    bodies.push(this.boxA);
+    this.rocket.render.fillStyle = "grey";
+    bodies.push(this.rocket);
 
-    this.boxB = this.Bodies.rectangle(600, 560, 80, 80, {
-      isStatic: true,
-    });
-    bodies.push(this.boxB);
+    // this.boxB = this.Bodies.rectangle(600, 560, 80, 80, {
+    //   isStatic: true,
+    // });
 
-    this.ground = this.Bodies.rectangle(435, 630, 810, 60, {
-      isStatic: true,
-    });
-    bodies.push(this.ground);
+    // bodies.push(this.boxB);
 
-    this.leftWall = this.Bodies.rectangle(0, 200, 60, 800, {
-      isStatic: true,
-    });
-    bodies.push(this.leftWall);
+    // this.ground = this.Bodies.rectangle(435, 630, 810, 60, {
+    //   isStatic: true,
+    // });
+    // bodies.push(this.ground);
 
-    this.homePlanet = this.Bodies.circle(0, 2000, 1000, {
-      isStatic: true,
-    });
-    bodies.push(this.homePlanet);
-
-    //Add Objects to World
-    // this.Composite.add(
-    //   this.engine.world, bodies
-    // );
+    // this.leftWall = this.Bodies.rectangle(0, 200, 60, 800, {
+    //   isStatic: true,
+    // });
+    // bodies.push(this.leftWall);
 
     this.World.add(this.engine.world, bodies, {
       // friction: 0,
@@ -204,53 +234,112 @@ var classGame = {
     });
   },
 
+  createHomePlanet: function () {
+    let bodies = [];
+
+    this.homePlanet = this.Bodies.circle(0, 1200, 1105, {
+      isStatic: true,
+      render: {
+        // fillStyle: "#97641C",
+        // strokeStyle: "green",
+        // lineWidth: 20,
+        sprite: {
+          texture: "./assets/homePlanet.png",
+        },
+      },
+    });
+    bodies.push(this.homePlanet);
+
+    this.World.add(this.engine.world, bodies, {});
+
+    //Add Image
+    //Image
+    // var img = new Image();
+    // img.onload = function() {
+    //     handleLoadedTexture(img);
+    // };
+    // img.src = "image.png";
+    // function handleLoadedTexture(img) {
+    //call loop etc that uses image
+    // };
+  },
+
   setKeyHandlers: function () {
+    //key Events explained:
+    //https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event
+
     const keyHandlers = {
       KeyW: () => {
-        this.Body.applyForce(
-          this.boxA,
-          {
-            x: this.boxA.position.x,
-            y: this.boxA.position.y,
-          },
-          { x: 0, y: -4 * this.speed }
-        );
+        if (this.modifier) {
+          this.Body.applyForce(
+            this.rocket,
+            {
+              x: this.rocket.position.x,
+              y: this.rocket.position.y,
+            },
+            { x: 0, y: -3 * this.speed }
+          );
+          this.fuel = this.fuel - 10 / this.delta;
+        } else {
+          this.Body.applyForce(
+            this.rocket,
+            {
+              x: this.rocket.position.x,
+              y: this.rocket.position.y,
+            },
+            { x: 0, y: -1 * this.speed }
+          );
+          this.fuel = this.fuel - 3 / this.delta;
+        }
       },
       KeyS: () => {
         this.Body.applyForce(
-          this.boxA,
+          this.rocket,
           {
-            x: this.boxA.position.x,
-            y: this.boxA.position.y,
+            x: this.rocket.position.x,
+            y: this.rocket.position.y,
           },
-          { x: 0, y: 2 * this.speed }
+          { x: 0, y: 1 * this.speed }
         );
+        this.fuel = this.fuel - 3 / this.delta;
       },
       KeyD: () => {
         this.Body.applyForce(
-          this.boxA,
+          this.rocket,
           {
-            x: this.boxA.position.x,
-            y: this.boxA.position.y,
+            x: this.rocket.position.x,
+            y: this.rocket.position.y,
           },
           { x: 1 * this.speed, y: 0 }
         );
+        this.fuel = this.fuel - 3 / this.delta;
       },
       KeyA: () => {
         this.Body.applyForce(
-          this.boxA,
+          this.rocket,
           {
-            x: this.boxA.position.x,
-            y: this.boxA.position.y,
+            x: this.rocket.position.x,
+            y: this.rocket.position.y,
           },
           { x: -1 * this.speed, y: 0 }
         );
       },
+      KeyQ: () => {
+        this.Body.rotate(this.rocket, Math.PI * this.speed * 40);
+        this.fuel = this.fuel - 3 / this.delta;
+      },
+      KeyE: () => {
+        this.Body.rotate(this.rocket, -Math.PI * this.speed * 40);
+        this.fuel = this.fuel - 3 / this.delta;
+      },
+      KeySpace: () => {},
+      KeyF: () => {},
     };
 
     const keysDown = new Set();
     document.addEventListener("keydown", (event) => {
       keysDown.add(event.code);
+      this.modifier = event.shiftKey;
     });
     document.addEventListener("keyup", (event) => {
       keysDown.delete(event.code);
@@ -258,63 +347,91 @@ var classGame = {
 
     Matter.Events.on(this.engine, "beforeUpdate", (event) => {
       [...keysDown].forEach((k) => {
+        // if (event.getModifierState("Shift")) {
+        //   var test = "test";
+        // } else {
+        //   keyHandlers[k]?.();
+        // }
         keyHandlers[k]?.();
       });
-    });
+    }).bind(this);
+  },
+
+  applyRocketForce: function (iX, iY, bBoostModifier) {
+    if (bBoostModifier) {
+      var fuelMultiplier = 3;
+      var fuelMultiplierBoost = 10;
+
+      this.Body.applyForce(
+        this.rocket,
+        {
+          x: this.rocket.position.x,
+          y: this.rocket.position.y,
+        },
+        {
+          x: this.speed * Math.cos(this.rocket.angle + Math.PI * 0.5),
+          y: this.speed * Math.cos(this.rocket.angle + Math.PI * 0.5),
+        }
+      );
+      this.fuel = this.fuel - fuelMultiplierBoost / this.delta;
+    } else {
+      this.Body.applyForce(
+        this.rocket,
+        {
+          x: this.rocket.position.x,
+          y: this.rocket.position.y,
+        },
+        { x: 0, y: -1 * this.speed }
+      );
+      this.fuel = this.fuel - fuelMultiplier / this.delta;
+    }
   },
 
   drawStars: function () {
-    var star = [];
-    this.star = star;
-    this.totalStars = 100;
-    for (var i = 0; i < this.totalStars; i++) {
-      star.push({
-        x: Math.random() * window.innerWidth,
-        y: Math.random() * window.innerHeight
-      });
-    }
-
-    // this.ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // this.ctx.fillStyle = "green";
-    // this.ctx.fillRect(100, 100, 1000, 1000);
-
-
-
-    this.ctx.fillStyle = "#ffffff"; //'darkgrey'; //'rgba(255, 255, 255, 0.5)'
-    var parallax = 1;
-    var Vx = this.boxA.velocity.x ;
-    var Vy = this.boxA.velocity.y;
-    var width = window.innerWidth;
-    var height = window.innerHeight;
-    for (var i = 0; i < this.totalStars; i++) {
-      star[i].x -= Vx;
-      star[i].y -= Vy;
-      this.ctx.fillRect(star[i].x, star[i].y, 1, 1);
-      if (star[i].x < 0) {
-        star[i].x = width;
-        star[i].y = Math.random() * height;
-      }
-      if (star[i].x > width) {
-        star[i].x = 0;
-        star[i].y = Math.random() * height;
-      }
-      if (star[i].y < 0) {
-        star[i].y = height;
-        star[i].x = Math.random() * width;
-      }
-      if (star[i].y > height) {
-        star[i].y = 0;
-        star[i].x = Math.random() * width;
-      }
-    }
+    // var star = [];
+    // this.star = star;
+    // this.totalStars = 100;
+    // for (var i = 0; i < this.totalStars; i++) {
+    //   star.push({
+    //     x: Math.random() * window.innerWidth,
+    //     y: Math.random() * window.innerHeight,
+    //   });
+    // }
+    // this.ctx.fillStyle = "#ffffff"; //'darkgrey'; //'rgba(255, 255, 255, 0.5)'
+    // // var parallax = 1;
+    // var Vx = this.rocket.velocity.x;
+    // var Vy = this.rocket.velocity.y;
+    // var width = window.innerWidth;
+    // var height = window.innerHeight;
+    // for (var i = 0; i < this.totalStars; i++) {
+    //   star[i].x -= Vx;
+    //   star[i].y -= Vy;
+    //   this.ctx.fillRect(star[i].x, star[i].y, 2, 2);
+    //   if (star[i].x < 0) {
+    //     star[i].x = width;
+    //     star[i].y = Math.random() * height;
+    //   }
+    //   if (star[i].x > width) {
+    //     star[i].x = 0;
+    //     star[i].y = Math.random() * height;
+    //   }
+    //   if (star[i].y < 0) {
+    //     star[i].y = height;
+    //     star[i].x = Math.random() * width;
+    //   }
+    //   if (star[i].y > height) {
+    //     star[i].y = 0;
+    //     star[i].x = Math.random() * width;
+    //   }
+    // }
   },
 
-  starsMoveRandom: function() {
+  starsMoveRandom: function () {
     for (var i = 0; i < this.totalStars; i++) {
       this.star[i].x = Math.random() * window.innerWidth;
       this.star[i].y = Math.random() * window.innerHeight;
     }
-  },  
+  },
 
   setForceHandler: function () {
     // Forces
@@ -322,23 +439,71 @@ var classGame = {
       this.runner,
       "beforeTick",
       function () {
-
-        //Rotation 
-        this.Body.rotate( this.homePlanet, Math.PI * this.delta * 1/100000 );
-
-
-
+        //Rotation
+        this.Body.rotate(this.homePlanet, (Math.PI * this.delta * 1) / 100000);
       }.bind(this)
     );
   },
+
+  setGameWorldColors: function () {
+    // this.drawStars();
+    //Hud
+  },
+
+  setHudMain: function () {
+    let hudWidth = 400;
+    let hudHeight = 40;
+    // // this.ctx.clearRect();
+    this.ctx.globalAlpha = 0.5;
+    this.ctx.fillStyle = "#18347E";
+    this.ctx.fillRect(
+      window.innerWidth / 2 - hudWidth / 2,
+      window.innerHeight - hudHeight,
+      hudWidth,
+      -hudHeight
+    );
+    this.ctx.globalAlpha = 1.0;
+
+    // let hudWidth = 400;
+    // let hudHeight = 40;
+    // // this.ctx.clearRect();
+    this.ctx.fillStyle = "#5E42A9";
+    this.ctx.fillRect(
+      window.innerWidth / 2 - hudWidth / 2,
+      window.innerHeight - hudHeight,
+      (hudWidth * this.fuel) / this.fuelInit,
+      -hudHeight
+    );
+  },
+
+  setHudControls: function () {
+    // let hudWidth = 200;
+    // let hudHeight = 200;
+    if (this.base_image) {
+      this.ctx.drawImage(
+        this.base_image,
+        window.innerWidth,
+        window.innerHeight,
+        -300,
+        (-300 * 1208) / 725
+      );
+    }
+
+    // this.ctx.fillStyle = "#5E42A9";
+    // this.ctx.fillRect(window.innerWidth, window.innerHeight, -200, -200);
+  },
 };
 
-classGame.init();
-classGame.setForceHandler();
+oGame.init();
+oGame.setForceHandler();
 
-// (function cycle() { //render loop
-//   ctx.save(); //move camera
-//   ctx.translate(window.innerWidth * 0.5, window.innerHeight * 0.5);
-//   ctx.translate(this.boxA.position.x, this.boxA.position.y);
-//   window.requestAnimationFrame(cycle);
-// }.bind(this));
+//Image
+// var img = new Image();
+// img.onload = function() {
+//     handleLoadedTexture(img);
+// };
+// img.src = "image.png";
+
+// function handleLoadedTexture(img) {
+//     //call loop etc that uses image
+// };

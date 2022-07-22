@@ -499,7 +499,7 @@ function planetesimals() {
               driftVx: mass[j].velocity.x + (Math.random() - 0.5) * driftSpeed + r * mass[j].angularSpeed * Math.cos(angle),
               driftVy: mass[j].velocity.y + (Math.random() - 0.5) * driftSpeed + r * mass[j].angularSpeed * Math.sin(angle),
             });
-  
+  Q
             for (var n = 0; n < length; n++) {
               dx = (mass[j].vertices[n].x - mass[j].position.x);
               dy = (mass[j].vertices[n].y - mass[j].position.y);
