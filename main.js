@@ -84,6 +84,7 @@ var oGame = {
     this.createObservatory();
     this.createBlackHole();
     this.createWhiteHole();
+    this.createRustyPlanet();
   },
 
   initGameSettings: function () {
@@ -103,6 +104,9 @@ var oGame = {
     this.fuelBoostMultiplier = 6;
     this.rocketHeight = 120;
     this.rocketWidth = 50;
+    this.solarTimeStamp= 0;
+    this.breakTimeStamp= 0;
+    this.fuelTimeStamp= 0;
 
     //Gravity and Interaction
     this.gravityConstant = 0.0005 * 0.5;
@@ -141,7 +145,7 @@ var oGame = {
         width: window.innerWidth,
         height: window.innerHeight,
         wireframes: false,
-        // background: "#071847",
+        background: "#07071A",
         // wireframeBackground: "#394763",
         hasBounds: true,
         showCollisions: true,
@@ -169,9 +173,6 @@ var oGame = {
         this.setHudMain();
         this.setHudControls();
         this.setMiniMap();
-
-       
-
       }.bind(this)
     );
   },
@@ -273,7 +274,7 @@ var oGame = {
     this.rocket = this.Bodies.rectangle(-3000, 2000, 50, 120, {
       inertia: Infinity,
       friction: 0.1,
-      frictionStatic: 2,
+      frictionStatic: 1,
       frictionAir: 0,
       mass: 1,
       isStatic: false,
@@ -320,6 +321,32 @@ var oGame = {
     this.World.add(this.engine.world, [this.homePlanet], {});
   },
 
+  createRustyPlanet: function () {
+    let bodies = [];
+    this.rustyPlanet = this.Bodies.circle(3000, -3300, 1550, {
+      // frictionStatic: 1,
+      // friction: 1,
+      isStatic: true,
+      mass: 200,
+      render: {
+        // fillStyle: "#97641C",
+        // strokeStyle: "green",
+        // lineWidth: 20,
+        sprite: {
+          texture: "./assets/rustyPlanet.png",
+          xScale: 0.9,
+          yScale: 0.9,
+        },
+      },
+    });
+
+    // this.Body.setDensity( this.homePlanet, density);
+    // this.Body.setMass( this.homePlanet, 100)
+
+    this.planets.push(this.rustyPlanet);
+    this.World.add(this.engine.world, [this.rustyPlanet], {});
+  },
+  
   createColdMoon: function () {
     // this.coldMoon = this.Bodies.circle(-3500, 3000, 490, {
     this.coldMoon = this.Bodies.circle(-4000, 0, 490, {
@@ -343,7 +370,7 @@ var oGame = {
   createHotMoon: function () {
     this.hotMoon = this.Bodies.circle(-2000, -1500, 360, {
       isStatic: true,
-      mass: 40,
+      mass: 30,
       render: {
         // fillStyle: "#97641C",
         // strokeStyle: "green",
@@ -360,7 +387,7 @@ var oGame = {
   },
 
   createGasPlanet: function () {
-    this.gasPlanet = this.Bodies.circle(2500, -2500, 320, {
+    this.gasPlanet = this.Bodies.circle(2500, 0, 320, {
       isStatic: true,
       mass: 50,
       render: {
@@ -585,8 +612,15 @@ var oGame = {
       KeyE: () => {
         this.Body.rotate(this.rocket, Math.PI * this.rotationSpeed);
       },
-      KeySpace: () => {},
-      KeyF: () => {},
+      KeySpace: () => {
+        // this.rocketBreak();
+      },
+      KeyF: () => {
+        this.rocketSolar();
+      },
+      KeyT: () => {
+        this.rocketFuel();
+      },
     };
 
     const keysDown = new Set();
@@ -654,10 +688,56 @@ var oGame = {
         this.applyGravityPlanets(this.gasPlanet);
         this.applyGravityPlanets(this.sun);
         this.applyGravityPlanets(this.blackHole);
+        this.applyGravityPlanets(this.rustyPlanet);
 
         // this.warpEvents();
       }.bind(this)
     );
+  },
+
+  rocketSolar: function () {
+    if (!this.solarTimeStamp || ( this.gameTimer/ this.delta - this.solarTimeStamp > 3 ) ) {
+      if (this.solar) {
+        this.solar = false;
+        this.rocket.render.sprite.texture = './assets/rocketSolar.png';
+      } else {
+        this.solar = true;   
+        this.rocket.render.sprite.texture = './assets/rocketDefault.png';
+      }
+      this.solarTimeStamp =  this.gameTimer/ this.delta;
+    }
+
+  },
+
+  // rocketBreak: function () {
+  //   if (!this.breakTimeStamp || ( this.gameTimer/ this.delta - this.breakTimeStamp > 5 ) ) {
+  //     if (this.break) {
+  //       this.break = false;
+  //       this.rocket.render.sprite.texture = './assets/rocketBreak.png';
+  //     } else if ( !this.solar) {
+  //       this.break = true;   
+  //       this.rocket.render.sprite.texture = './assets/rocketDefault.png';
+  //     } else {
+  //       this.break = true;   
+  //       this.rocket.render.sprite.texture = './assets/rocketDefault.png';
+  //     }
+  //     this.breakTimeStamp =  this.gameTimer/ this.delta;
+  //   }
+
+  // },
+
+  rocketFuel: function () {
+    if (!this.fuelTimeStamp || ( this.gameTimer/ this.delta - this.fuelTimeStamp > 3 ) ) {
+      if (this.fuelMode) {
+        this.fuelMode = false;
+        this.rocket.render.sprite.texture = './assets/rocketFuel.png';
+      } else {
+        this.fuelMode = true;   
+        this.rocket.render.sprite.texture = './assets/rocketDefault.png';
+      }
+      this.fuelTimeStamp =  this.gameTimer/ this.delta;
+    }
+
   },
 
   warpEvents: function () {
@@ -800,11 +880,12 @@ var oGame = {
   setMiniMap: function () {
     let hudWidth = 350;
     let hudHeight = 350;
-    let xOffset = window.innerWidth;
+    let xOffset = window.innerWidth - 25;
+    let yOffset = 25;
 
     this.ctx.globalAlpha = 0.4;
     this.ctx.fillStyle = "#5E42A9";
-    this.ctx.fillRect(xOffset, 0, -hudWidth, hudHeight);
+    this.ctx.fillRect(xOffset, yOffset, -hudWidth, hudHeight);
     this.ctx.globalAlpha = 1.0;
 
     var scale = hudWidth / (this.gameSize * 2);
@@ -814,7 +895,7 @@ var oGame = {
     for (var i = 1; i < this.planets.length; i++) {
       this.ctx.fillRect(
         xOffset - hudWidth / 2 + this.planets[i].position.x * scale,
-        this.planets[i].position.y * scale + hudHeight / 2,
+        yOffset + this.planets[i].position.y * scale + hudHeight / 2,
         10,
         10
       );
@@ -823,7 +904,7 @@ var oGame = {
     this.ctx.fillStyle = "#ffff00";
     this.ctx.fillRect(
       xOffset - hudWidth / 2 + this.rocket.position.x * scale,
-      this.rocket.position.y * scale + hudHeight / 2,
+      yOffset + this.rocket.position.y * scale + hudHeight / 2,
       5,
       5
     );
@@ -839,54 +920,65 @@ var oGame = {
 
     //create new random array
 
-    if ( !this.randomArray || this.randomArray.length == 0 || (this.gameTimer / this.delta) % 1 == 0 ){
-      this.randomArray = this.getRandomArbitrary(0.7,1.3);
-    } 
+    if (
+      !this.randomArray ||
+      this.randomArray.length == 0 ||
+      (this.gameTimer / this.delta) % 1 == 0
+    ) {
+      this.randomArray = this.getRandomArbitrary(0.7, 1.3);
+    }
 
     let centerX = window.innerWidth / 2;
     let centerY = window.innerHeight / 2;
 
-    let startingPointX = (centerX - this.rocketWidth/2 - 5 );
-    let startingPointY = (centerY + this.rocketHeight/2 + 10);
+    let startingPointX = centerX - this.rocketWidth / 2 - 5;
+    let startingPointY = centerY + this.rocketHeight / 2 + 10;
 
     //Translate Thrust
-    this.ctx.translate(centerX , centerY );
-    this.ctx.rotate( this.rocket.angle);
-    this.ctx.translate(  -(centerX) ,  -(centerY));
-  
+    this.ctx.translate(centerX, centerY);
+    this.ctx.rotate(this.rocket.angle);
+    this.ctx.translate(-centerX, -centerY);
+
     //Create Gradient
     var gradient = this.ctx.createLinearGradient(
-      startingPointX - 10 + thrustWidth/2,
-      startingPointY, 
-      startingPointX - 10 + thrustWidth/2,
-      startingPointY + thrustHeight,
-      );
-    gradient.addColorStop(0, 'rgb(237, 58, 39, 0.9)');
-    gradient.addColorStop(0.7, 'rgb(246, 198, 39, 0.7)');
-    gradient.addColorStop(1, 'rgb(246, 198, 39, 0)');
+      startingPointX - 10 + thrustWidth / 2,
+      startingPointY,
+      startingPointX - 10 + thrustWidth / 2,
+      startingPointY + thrustHeight
+    );
+    gradient.addColorStop(0, "rgb(237, 58, 39, 0.9)");
+    gradient.addColorStop(0.7, "rgb(246, 198, 39, 0.7)");
+    gradient.addColorStop(1, "rgb(246, 198, 39, 0)");
 
     //Draw Thrust
     this.ctx.fillStyle = gradient;
     this.ctx.beginPath();
-    this.ctx.moveTo(startingPointX + 10, startingPointY );
-    this.ctx.lineTo(startingPointX - 5 * this.randomArray[1], startingPointY + thrustHeight *this.randomArray[2] );
-    this.ctx.lineTo(startingPointX + thrustWidth + 5 *this.randomArray[3] , startingPointY + thrustHeight *this.randomArray[4])  ;
-    this.ctx.lineTo(startingPointX + thrustWidth - 10 , startingPointY + 5 - 5 * this.randomArray[5]   );
+    this.ctx.moveTo(startingPointX + 10, startingPointY);
+    this.ctx.lineTo(
+      startingPointX - 5 * this.randomArray[1],
+      startingPointY + thrustHeight * this.randomArray[2]
+    );
+    this.ctx.lineTo(
+      startingPointX + thrustWidth + 5 * this.randomArray[3],
+      startingPointY + thrustHeight * this.randomArray[4]
+    );
+    this.ctx.lineTo(
+      startingPointX + thrustWidth - 10,
+      startingPointY + 5 - 5 * this.randomArray[5]
+    );
     this.ctx.lineTo(startingPointX + 10, startingPointY);
     // this.ctx.stroke(); //line
     this.ctx.save();
     this.ctx.fill();
-
   },
 
-  getRandomArbitrary: function(min, max) {
+  getRandomArbitrary: function (min, max) {
     var array = [];
     for (var i = 0; i < 10; i++) {
-      array.push( Math.random() * (max - min) + min)
+      array.push(Math.random() * (max - min) + min);
     }
     return array;
-  }
-
+  },
 };
 
 oGame.init();

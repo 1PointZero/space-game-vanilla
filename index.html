@@ -8,13 +8,25 @@
   </head>
   <body>
     <!-- <div id="app"></div> -->
-    <canvas id="canvas" class="star-background"></canvas>
-    <!-- <div id="gameEngine"></div> -->
-    <!-- <div class="default-background"></div>   -->
-    <script type="module" src="/main.js"></script>
-    <script type="text/javascript" src="/src/controls.js"></script>
-    <script type="text/javascript" src="/src/basicExample.js"></script>
+     <!-- <div id="Page1">
 
+       <a href="#" onclick="return show('Page2','Page1');">ShowPage2</a>
+              <canvas id="startingScreen" class="star-background"></canvas>> -->
+     <!-- </div>
+    <div id="Page2" style="display:none"> -->
+      <!-- <a href="#" onclick="return show('Page1','Page2');"></a> -->
+        <canvas id="canvas" ></canvas>
+        <script type="module" src="/main.js"></script>
+        <script type="text/javascript" src="/src/controls.js"></script>
+        <script type="text/javascript" src="/src/basicExample.js"></script>
+     <!-- </div> -->
+     <!-- <script>
+        function show(shown, hidden) {
+          document.getElementById(shown).style.display='block';
+          document.getElementById(hidden).style.display='none';
+          return false;
+        }
+      </script> -->
     <script src="https://cdn.jsdelivr.net/npm/pathseg@1.2.1/pathseg.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/poly-decomp@0.3.0/build/decomp.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.18.0/matter.js"></script>
