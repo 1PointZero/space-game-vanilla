@@ -117,3 +117,5 @@ button:focus-visible {
   position: relative;
   display: block;
 } */
+
+svg {display: none;}
